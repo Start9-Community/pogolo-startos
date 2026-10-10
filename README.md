@@ -20,20 +20,25 @@
 | Property      | Value                                 |
 | ------------- | ------------------------------------- |
 | Image         | `0xf0xx0/pogolo` (Docker Hub, pinned) |
+| Image         | `nginx` (dashboard + sampler)         |
 | Architectures | x86_64, aarch64                       |
 | Command       | `/pogolo --conf /data/pogolo.toml`    |
 
-| Subcontainer | Purpose                                       |
-| ------------ | --------------------------------------------- |
-| `pogolo-sub` | The `primary` daemon — the one to `attach` to |
+| Subcontainer  | Purpose                                       |
+| ------------- | --------------------------------------------- |
+| `pogolo-sub`  | The `primary` daemon — the one to `attach` to |
+| `ui-sub`      | The `ui` daemon (nginx serving the dashboard) |
+| `sampler-sub` | The `sampler` daemon (records hashrate)       |
 
-`NO_COLOR=1` is set so the StartOS log viewer shows plain text.
+pogolo logs to stdout with `NO_COLOR=1`, so the StartOS Logs tab shows plain text.
+
+The dashboard (`assets/dashboard/index.html`) is a single static page with no external dependencies. nginx (`assets/nginx.conf`) serves it on 5663 and proxies `/api/` to pogolo on `127.0.0.1:5662`. pogolo keeps no history, so the `sampler` daemon (`assets/sampler.sh`) reads `/api/v1/info` once a minute and appends `unix_seconds,MH/s` to `/data/hashrate.csv` (7 days kept), which nginx serves as `/history.csv` for the graph.
 
 ## Volume and Data Layout
 
 | Volume              | Mount Point     | Purpose                                |
 | ------------------- | --------------- | -------------------------------------- |
-| `main`              | `/data`         | Holds `pogolo.toml`                    |
+| `main`              | `/data`         | `pogolo.toml` and `hashrate.csv`       |
 | `bitcoind` / `main` | `/mnt/bitcoind` | Read-only, for Bitcoin's RPC `.cookie` |
 
 ## File Models
@@ -46,12 +51,13 @@
 
 ## Network Access and Interfaces
 
-| Interface      | Id        | Type | Port | Protocol                    |
-| -------------- | --------- | ---- | ---- | --------------------------- |
-| Stratum Server | `stratum` | api  | 5661 | raw TCP (Stratum V1 and V2) |
-| API            | `api`     | api  | 5662 | HTTP, read-only             |
+| Interface      | Id        | Type | Port | Protocol                                                                         |
+| -------------- | --------- | ---- | ---- | -------------------------------------------------------------------------------- |
+| Stratum Server | `stratum` | api  | 5661 | raw TCP (Stratum V1 and V2)                                                      |
+| API            | `api`     | api  | 5662 | HTTP, read-only (`/api/v1/info`, `/api/v1/gophers`, `/openapi.yaml`, `/metrics`) |
+| Web UI         | `ui`      | ui   | 5663 | HTTP, dashboard                                                                  |
 
-Both are bound on the `main` MultiHost with matching external ports. Stratum has no TLS.
+All are bound on the `main` MultiHost with matching external ports. Stratum has no TLS.
 
 ## Actions
 
@@ -62,6 +68,7 @@ Both are bound on the `main` MultiHost with matching external ports. Stratum has
 | Check     | Displayed        | Method                 |
 | --------- | ---------------- | ---------------------- |
 | `primary` | "Stratum Server" | Port 5661 is listening |
+| `ui`      | "Web Interface"  | Port 5663 is listening |
 
 pogolo waits for Bitcoin to finish its initial sync before listening, so this check fails until then.
 
@@ -72,7 +79,7 @@ The `main` volume (just `pogolo.toml`) is backed up wholesale.
 ## Limitations and Differences
 
 1. Only the backends StartOS Bitcoin provides (JSON-RPC + ZMQ) are wired up; btcd websocket is not.
-2. Logs go to the StartOS log viewer, not a log file.
+2. Hashrate history only covers time the sampler was running; gaps longer than 3 minutes are drawn as breaks.
 
 ---
 
@@ -80,9 +87,9 @@ The `main` volume (just `pogolo.toml`) is backed up wholesale.
 
 ```yaml
 package_id: pogolo
-image: 0xf0xx0/pogolo
+images: [0xf0xx0/pogolo, nginx]
 architectures: [x86_64, aarch64]
-subcontainers: [pogolo-sub]
+subcontainers: [pogolo-sub, ui-sub, sampler-sub]
 volumes:
   main: /data
 file_models: [pogolo.toml]
@@ -92,7 +99,8 @@ dependencies: [bitcoind]
 interfaces:
   stratum: { type: api, port: 5661 }
   api: { type: api, port: 5662 }
+  ui: { type: ui, port: 5663 }
 actions: [config]
 tasks: [bitcoind zmqEnabled]
-health_checks: [primary]
+health_checks: [primary, ui]
 ```

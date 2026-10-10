@@ -9,6 +9,7 @@ import { sdk } from './sdk'
 
 export const stratumPort = 5661
 export const apiPort = 5662
+export const uiPort = 5663
 export const bitcoindMountpoint = '/mnt/bitcoind'
 export const configPath = '/data/pogolo.toml'
 

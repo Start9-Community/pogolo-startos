@@ -9,6 +9,7 @@ import {
   configPath,
   getBitcoindBridge,
   stratumPort,
+  uiPort,
 } from './utils'
 
 export const main = sdk.setupMain(async ({ effects }) => {
@@ -53,27 +54,91 @@ export const main = sdk.setupMain(async ({ effects }) => {
     .read()
     .const(effects)
 
-  return sdk.Daemons.of(effects).addDaemon('primary', {
-    subcontainer: sub,
-    exec: {
-      command: ['/pogolo', '--conf', configPath],
-      env: {
-        POGOLO_BACKEND_HOST: bitcoind.rpc,
-        POGOLO_BACKEND_ZMQHOST: bitcoind.zmq,
-        NO_COLOR: '1',
+  // dashboard: nginx serves the page and proxies /api/ to pogolo; the sampler
+  // records hashrate history to /data/hashrate.csv for the graph
+  const uiSub = await sdk.SubContainer.of(
+    effects,
+    { imageId: 'nginx' },
+    sdk.Mounts.of()
+      .mountVolume({
+        volumeId: 'main',
+        subpath: null,
+        mountpoint: '/data',
+        readonly: true,
+      })
+      .mountAssets({
+        subpath: 'dashboard',
+        mountpoint: '/usr/share/nginx/html',
+      })
+      .mountAssets({
+        subpath: 'nginx.conf',
+        mountpoint: '/etc/nginx/conf.d/default.conf',
+        type: 'file',
+      }),
+    'ui-sub',
+  )
+  const samplerSub = await sdk.SubContainer.of(
+    effects,
+    { imageId: 'nginx' },
+    sdk.Mounts.of()
+      .mountVolume({
+        volumeId: 'main',
+        subpath: null,
+        mountpoint: '/data',
+        readonly: false,
+      })
+      .mountAssets({
+        subpath: 'sampler.sh',
+        mountpoint: '/sampler.sh',
+        type: 'file',
+      }),
+    'sampler-sub',
+  )
+
+  return sdk.Daemons.of(effects)
+    .addDaemon('primary', {
+      subcontainer: sub,
+      exec: {
+        command: ['/pogolo', '--conf', configPath],
+        env: {
+          POGOLO_BACKEND_HOST: bitcoind.rpc,
+          POGOLO_BACKEND_ZMQHOST: bitcoind.zmq,
+          NO_COLOR: '1',
+        },
       },
-    },
-    ready: {
-      display: i18n('Stratum Server'),
-      gracePeriod: 30_000,
-      fn: () =>
-        sdk.healthCheck.checkPortListening(effects, stratumPort, {
-          successMessage: i18n('Stratum server is ready'),
-          errorMessage: i18n(
-            'Stratum server is not ready. pogolo waits for Bitcoin to finish syncing before accepting miners.',
-          ),
-        }),
-    },
-    requires: [],
-  })
+      ready: {
+        display: i18n('Stratum Server'),
+        gracePeriod: 30_000,
+        fn: () =>
+          sdk.healthCheck.checkPortListening(effects, stratumPort, {
+            successMessage: i18n('Stratum server is ready'),
+            errorMessage: i18n(
+              'Stratum server is not ready. pogolo waits for Bitcoin to finish syncing before accepting miners.',
+            ),
+          }),
+      },
+      requires: [],
+    })
+    .addDaemon('sampler', {
+      subcontainer: samplerSub,
+      exec: { command: ['sh', '/sampler.sh'] },
+      ready: {
+        display: null,
+        fn: () => ({ result: 'success', message: null }),
+      },
+      requires: ['primary'],
+    })
+    .addDaemon('ui', {
+      subcontainer: uiSub,
+      exec: { command: ['nginx', '-g', 'daemon off;'] },
+      ready: {
+        display: i18n('Web Interface'),
+        fn: () =>
+          sdk.healthCheck.checkPortListening(effects, uiPort, {
+            successMessage: i18n('The web interface is ready'),
+            errorMessage: i18n('The web interface is not ready'),
+          }),
+      },
+      requires: [],
+    })
 })

@@ -1,10 +1,11 @@
 import { i18n } from './i18n'
 import { sdk } from './sdk'
-import { apiPort, stratumPort } from './utils'
+import { apiPort, stratumPort, uiPort } from './utils'
 
 export const mainHostId = 'main'
 export const stratumInterfaceId = 'stratum'
 export const apiInterfaceId = 'api'
+export const uiInterfaceId = 'ui'
 
 export const setInterfaces = sdk.setupInterfaces(async ({ effects }) => {
   const multiHost = sdk.MultiHost.of(effects, mainHostId)
@@ -50,5 +51,22 @@ export const setInterfaces = sdk.setupInterfaces(async ({ effects }) => {
   })
   const apiReceipt = await apiOrigin.export([api])
 
-  return [stratumReceipt, apiReceipt]
+  // dashboard: hashrate graph and connected miners
+  const uiOrigin = await multiHost.bindPort(uiPort, { protocol: 'http' })
+  const ui = sdk.createInterface(effects, {
+    name: i18n('Web UI'),
+    id: uiInterfaceId,
+    description: i18n(
+      'Pool dashboard with hashrate graph and connected miners',
+    ),
+    type: 'ui',
+    masked: false,
+    schemeOverride: null,
+    username: null,
+    path: '',
+    query: {},
+  })
+  const uiReceipt = await uiOrigin.export([ui])
+
+  return [stratumReceipt, apiReceipt, uiReceipt]
 })

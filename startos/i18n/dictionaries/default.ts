@@ -31,6 +31,13 @@ const dict = {
   'How often each miner should submit a share on average. Difficulty is adjusted to hit this.': 20,
   Configure: 21,
   'Set the default payout address, coinbase tag, password and difficulty settings.': 22,
+
+  // web UI (main.ts, interfaces.ts)
+  'Web Interface': 23,
+  'The web interface is ready': 24,
+  'The web interface is not ready': 25,
+  'Web UI': 26,
+  'Pool dashboard with hashrate graph and connected miners': 27,
 } as const
 
 /**

@@ -17,5 +17,11 @@ export const manifest = setupManifest({
       arch: ['x86_64', 'aarch64'],
       emulateMissing: false,
     },
+    // serves the dashboard and records hashrate history
+    nginx: {
+      source: { dockerTag: 'nginx:1.28.0-alpine' },
+      arch: ['x86_64', 'aarch64'],
+      emulateMissing: false,
+    },
   },
 })

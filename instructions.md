@@ -21,6 +21,12 @@ Open the **Stratum Server** interface on the Dashboard to see the address, then 
 
 Use your Bitcoin address as the worker username (for example `bc1q....worker1`). If you set a default payout address, miners can use any username.
 
+## Watching the pool
+
+Open the **Web UI** interface for the pool dashboard: total hashrate with a graph of the last hour, day or week, every connected miner with its hashrate, difficulty and shares, and any blocks found. pogolo's live log is under the **Logs** tab.
+
+Pool stats as JSON are on the **API** interface at `/api/v1/info`.
+
 ## Limitations
 
 - Meant for your LAN, not the public internet. Stratum is not encrypted.

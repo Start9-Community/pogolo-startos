@@ -1,0 +1,785 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>pogolo</title>
+    <link rel="icon" href="logo.svg" type="image/svg+xml" />
+    <style>
+      :root {
+        color-scheme: light;
+        --bg: #f4f4f2;
+        --surface: #fcfcfb;
+        --border: #e4e3df;
+        --grid: #ecebe7;
+        --text-primary: #0b0b0b;
+        --text-secondary: #52514e;
+        --text-muted: #7a7974;
+        --series-1: #2a78d6;
+        --good: #008300;
+        --critical: #c62f2e;
+        --mono: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+      }
+      @media (prefers-color-scheme: dark) {
+        :root:not([data-theme='light']) {
+          color-scheme: dark;
+          --bg: #111110;
+          --surface: #1a1a19;
+          --border: #2c2c2a;
+          --grid: #262624;
+          --text-primary: #f0efec;
+          --text-secondary: #c3c2b7;
+          --text-muted: #8f8e86;
+          --series-1: #3987e5;
+          --good: #3fae3f;
+          --critical: #e66767;
+        }
+      }
+      * {
+        box-sizing: border-box;
+      }
+      body {
+        margin: 0;
+        background: var(--bg);
+        color: var(--text-primary);
+        font:
+          15px/1.45 system-ui,
+          -apple-system,
+          'Segoe UI',
+          Roboto,
+          sans-serif;
+      }
+      main {
+        max-width: 1100px;
+        margin: 0 auto;
+        padding: 24px 16px 48px;
+      }
+      header {
+        display: flex;
+        align-items: center;
+        gap: 16px;
+        margin-bottom: 24px;
+      }
+      header > div,
+      .card,
+      .tile {
+        min-width: 0;
+      }
+      header img {
+        width: 56px;
+        height: 56px;
+      }
+      header h1 {
+        margin: 0;
+        font-size: 26px;
+        letter-spacing: -0.01em;
+      }
+      header .tag {
+        color: var(--text-secondary);
+        font-family: var(--mono);
+        font-size: 13px;
+        overflow-wrap: anywhere;
+      }
+      .status {
+        margin-left: auto;
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        color: var(--text-secondary);
+        font-size: 13px;
+        white-space: nowrap;
+      }
+      .status .dot {
+        width: 8px;
+        height: 8px;
+        border-radius: 50%;
+        background: var(--text-muted);
+      }
+      .status.ok .dot {
+        background: var(--good);
+      }
+      .status.down .dot {
+        background: var(--critical);
+      }
+      .card {
+        background: var(--surface);
+        border: 1px solid var(--border);
+        border-radius: 12px;
+        padding: 20px;
+        margin-bottom: 16px;
+      }
+      .tiles {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+        gap: 12px;
+        margin-bottom: 16px;
+      }
+      .tile {
+        background: var(--surface);
+        border: 1px solid var(--border);
+        border-radius: 12px;
+        padding: 14px 16px;
+      }
+      .tile .label {
+        color: var(--text-secondary);
+        font-size: 12px;
+        text-transform: uppercase;
+        letter-spacing: 0.04em;
+      }
+      .tile .value {
+        white-space: nowrap;
+        font-size: 22px;
+        font-weight: 600;
+        font-variant-numeric: tabular-nums;
+        margin-top: 2px;
+      }
+      .tile.hero .value {
+        font-size: 28px;
+      }
+      .card-head {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 12px;
+        margin-bottom: 12px;
+        flex-wrap: wrap;
+      }
+      .card-head h2 {
+        margin: 0;
+        font-size: 16px;
+      }
+      .ranges {
+        display: inline-flex;
+        border: 1px solid var(--border);
+        border-radius: 8px;
+        overflow: hidden;
+      }
+      .ranges button {
+        border: 0;
+        background: transparent;
+        color: var(--text-secondary);
+        font: inherit;
+        font-size: 13px;
+        padding: 4px 12px;
+        cursor: pointer;
+      }
+      .ranges button[aria-pressed='true'] {
+        background: var(--grid);
+        color: var(--text-primary);
+        font-weight: 600;
+      }
+      .chart {
+        position: relative;
+        height: 260px;
+      }
+      .chart svg {
+        display: block;
+        width: 100%;
+        height: 100%;
+      }
+      .chart .axis {
+        fill: var(--text-muted);
+        font-size: 11px;
+        font-variant-numeric: tabular-nums;
+      }
+      .chart .gridline {
+        stroke: var(--grid);
+        stroke-width: 1;
+      }
+      .chart .line {
+        fill: none;
+        stroke: var(--series-1);
+        stroke-width: 2;
+        stroke-linejoin: round;
+        stroke-linecap: round;
+      }
+      .chart .area {
+        fill: var(--series-1);
+        opacity: 0.1;
+      }
+      .chart .cross {
+        stroke: var(--text-muted);
+        stroke-width: 1;
+      }
+      .chart .marker {
+        fill: var(--series-1);
+        stroke: var(--surface);
+        stroke-width: 2;
+      }
+      .tooltip {
+        position: absolute;
+        pointer-events: none;
+        background: var(--surface);
+        border: 1px solid var(--border);
+        border-radius: 8px;
+        padding: 6px 10px;
+        font-size: 12px;
+        white-space: nowrap;
+        box-shadow: 0 2px 8px rgb(0 0 0 / 0.12);
+        transform: translate(-50%, -100%);
+        display: none;
+      }
+      .tooltip b {
+        font-size: 14px;
+        font-variant-numeric: tabular-nums;
+      }
+      .empty {
+        color: var(--text-muted);
+        text-align: center;
+        padding: 32px 0;
+      }
+      .table-wrap {
+        overflow-x: auto;
+      }
+      table {
+        width: 100%;
+        border-collapse: collapse;
+        font-size: 14px;
+      }
+      th {
+        text-align: left;
+        color: var(--text-secondary);
+        font-weight: 500;
+        font-size: 12px;
+        text-transform: uppercase;
+        letter-spacing: 0.04em;
+        padding: 8px 10px;
+        border-bottom: 1px solid var(--border);
+        white-space: nowrap;
+      }
+      td {
+        padding: 10px;
+        border-bottom: 1px solid var(--grid);
+        white-space: nowrap;
+        font-variant-numeric: tabular-nums;
+      }
+      tr:last-child td {
+        border-bottom: 0;
+      }
+      th.num,
+      td.num {
+        text-align: right;
+      }
+      .worker {
+        font-weight: 600;
+      }
+      .sub {
+        display: block;
+        color: var(--text-muted);
+        font-size: 12px;
+        font-family: var(--mono);
+        font-weight: 400;
+      }
+      .proto {
+        display: inline-block;
+        border: 1px solid var(--border);
+        border-radius: 6px;
+        padding: 0 6px;
+        font-size: 12px;
+        color: var(--text-secondary);
+      }
+      .rej {
+        color: var(--text-muted);
+      }
+      footer {
+        color: var(--text-muted);
+        font-size: 12px;
+        text-align: center;
+        margin-top: 24px;
+      }
+    </style>
+  </head>
+  <body>
+    <main>
+      <header>
+        <img src="logo.svg" alt="" />
+        <div>
+          <h1>pogolo</h1>
+          <div class="tag" id="tag"></div>
+        </div>
+        <div class="status" id="status">
+          <span class="dot"></span><span id="status-text">Connecting…</span>
+        </div>
+      </header>
+
+      <section class="tiles">
+        <div class="tile hero">
+          <div class="label">Total hashrate</div>
+          <div class="value" id="t-hashrate">–</div>
+        </div>
+        <div class="tile">
+          <div class="label">Miners</div>
+          <div class="value" id="t-miners">–</div>
+        </div>
+        <div class="tile">
+          <div class="label">Best difficulty</div>
+          <div class="value" id="t-best">–</div>
+        </div>
+        <div class="tile">
+          <div class="label">Block height</div>
+          <div class="value" id="t-height">–</div>
+        </div>
+        <div class="tile">
+          <div class="label">Blocks found</div>
+          <div class="value" id="t-blocks">–</div>
+        </div>
+        <div class="tile">
+          <div class="label">Uptime</div>
+          <div class="value" id="t-uptime">–</div>
+        </div>
+      </section>
+
+      <section class="card">
+        <div class="card-head">
+          <h2>Pool hashrate</h2>
+          <div class="ranges" role="group" aria-label="Time range">
+            <button data-range="3600">1h</button>
+            <button data-range="86400" aria-pressed="true">24h</button>
+            <button data-range="604800">7d</button>
+          </div>
+        </div>
+        <div class="chart" id="chart">
+          <svg id="chart-svg" aria-label="Pool hashrate over time"></svg>
+          <div class="tooltip" id="tooltip"></div>
+        </div>
+      </section>
+
+      <section class="card">
+        <div class="card-head">
+          <h2>Connected miners</h2>
+        </div>
+        <div class="table-wrap">
+          <table>
+            <thead>
+              <tr>
+                <th>Miner</th>
+                <th>Address</th>
+                <th>Protocol</th>
+                <th class="num">Hashrate</th>
+                <th class="num">Best diff</th>
+                <th class="num">Target diff</th>
+                <th class="num">Shares</th>
+                <th class="num">Avg share</th>
+                <th class="num">Uptime</th>
+              </tr>
+            </thead>
+            <tbody id="miners"></tbody>
+          </table>
+        </div>
+        <div class="empty" id="miners-empty" hidden>No miners connected</div>
+      </section>
+
+      <section class="card" id="blocks-card" hidden>
+        <div class="card-head">
+          <h2>Blocks found</h2>
+        </div>
+        <div class="table-wrap">
+          <table>
+            <thead>
+              <tr>
+                <th>Height</th>
+                <th>Found by</th>
+                <th>Hash</th>
+                <th class="num">Time</th>
+              </tr>
+            </thead>
+            <tbody id="blocks"></tbody>
+          </table>
+        </div>
+      </section>
+
+      <footer id="footer"></footer>
+    </main>
+
+    <script>
+      'use strict'
+
+      const INFO_INTERVAL = 10_000
+      const HISTORY_INTERVAL = 60_000
+      // a gap longer than this between samples means pogolo wasn't running
+      const GAP = 3 * 60
+
+      let range = 86400
+      let history = [] // [unixSeconds, MH/s]
+      let liveHashrate = null
+
+      const $ = (id) => document.getElementById(id)
+
+      // ---------- formatting ----------
+      function fmtHashrate(mh) {
+        if (mh == null || !isFinite(mh)) return '–'
+        let h = mh * 1e6
+        const units = ['H/s', 'kH/s', 'MH/s', 'GH/s', 'TH/s', 'PH/s', 'EH/s']
+        let i = 0
+        while (h >= 1000 && i < units.length - 1) {
+          h /= 1000
+          i++
+        }
+        return `${h.toFixed(h >= 100 ? 0 : h >= 10 ? 1 : 2)} ${units[i]}`
+      }
+      function fmtDiff(d) {
+        if (!d) return '–'
+        const units = ['', 'k', 'M', 'G', 'T', 'P', 'E']
+        let i = 0
+        while (d >= 1000 && i < units.length - 1) {
+          d /= 1000
+          i++
+        }
+        return `${d.toFixed(d >= 100 ? 0 : d >= 10 ? 1 : 2)}${units[i]}`
+      }
+      function fmtDuration(s) {
+        s = Math.floor(s)
+        const d = Math.floor(s / 86400)
+        const h = Math.floor((s % 86400) / 3600)
+        const m = Math.floor((s % 3600) / 60)
+        if (d) return `${d}d ${h}h`
+        if (h) return `${h}h ${m}m`
+        if (m) return `${m}m`
+        return `${s}s`
+      }
+      function shorten(s, n = 8) {
+        return s && s.length > 2 * n + 1 ? `${s.slice(0, n)}…${s.slice(-n)}` : s
+      }
+
+      // all API strings come from miners; only ever set them as text
+      function el(tag, opts = {}, children = []) {
+        const e = document.createElement(tag)
+        if (opts.text != null) e.textContent = opts.text
+        if (opts.cls) e.className = opts.cls
+        if (opts.title) e.title = opts.title
+        for (const c of children) e.append(c)
+        return e
+      }
+
+      // ---------- data ----------
+      async function getJSON(url) {
+        const res = await fetch(url, { cache: 'no-store' })
+        if (!res.ok) throw new Error(res.status)
+        return res.json()
+      }
+
+      function setStatus(ok, text) {
+        $('status').className = 'status ' + (ok ? 'ok' : 'down')
+        $('status-text').textContent = text
+      }
+
+      async function refreshInfo() {
+        try {
+          const [info, gophers] = await Promise.all([
+            getJSON('api/v1/info'),
+            getJSON('api/v1/gophers'),
+          ])
+          renderInfo(info)
+          renderMiners(gophers)
+          setStatus(
+            true,
+            info.blockHeight
+              ? info.activeChain || 'online'
+              : 'waiting for Bitcoin',
+          )
+        } catch {
+          liveHashrate = null
+          setStatus(false, 'pogolo is not reachable')
+        }
+      }
+
+      async function refreshHistory() {
+        try {
+          const res = await fetch('history.csv', { cache: 'no-store' })
+          if (!res.ok) return
+          const text = await res.text()
+          history = text
+            .trim()
+            .split('\n')
+            .map((l) => l.split(',').map(Number))
+            .filter((p) => p.length === 2 && isFinite(p[0]) && isFinite(p[1]))
+          drawChart()
+        } catch {}
+      }
+
+      // ---------- rendering ----------
+      function renderInfo(info) {
+        liveHashrate = info.totalHashrate
+        $('tag').textContent = info.tag || ''
+        $('t-hashrate').textContent = fmtHashrate(info.totalHashrate)
+        $('t-miners').textContent = info.totalGophers ?? '–'
+        $('t-best').textContent = fmtDiff(info.bestDifficulty)
+        $('t-height').textContent = info.blockHeight
+          ? info.blockHeight.toLocaleString()
+          : '–'
+        const blocks = info.blocksFound || []
+        $('t-blocks').textContent = blocks.length
+        $('t-uptime').textContent = fmtDuration(info.uptime || 0)
+        $('footer').textContent = info.version ? `pogolo ${info.version}` : ''
+
+        $('blocks-card').hidden = blocks.length === 0
+        $('blocks').replaceChildren(
+          ...blocks
+            .slice()
+            .sort((a, b) => b.height - a.height)
+            .map((b) =>
+              el('tr', {}, [
+                el('td', { text: b.height.toLocaleString(), cls: 'worker' }),
+                el('td', { text: b.gopher }),
+                el('td', {}, [
+                  el('span', {
+                    text: shorten(b.hash, 10),
+                    title: b.hash,
+                    cls: 'sub',
+                  }),
+                ]),
+                el('td', {
+                  text: new Date(b.timestamp * 1000).toLocaleString(),
+                  cls: 'num',
+                }),
+              ]),
+            ),
+        )
+      }
+
+      function renderMiners(gophers) {
+        const rows = (gophers || [])
+          .slice()
+          .sort((a, b) => b.hashrate - a.hashrate)
+          .map((g) =>
+            el('tr', {}, [
+              el('td', {}, [
+                el('span', {
+                  text: g.nickname || shorten(g.extranonce1),
+                  cls: 'worker',
+                }),
+                el('span', { text: g.userAgent || 'unknown', cls: 'sub' }),
+              ]),
+              el('td', {}, [
+                el('span', {
+                  text: shorten(g.address) || '–',
+                  title: g.address,
+                  cls: 'sub',
+                }),
+              ]),
+              el('td', {}, [
+                el('span', {
+                  text: g.protocolVersion === 2 ? 'SV2' : 'SV1',
+                  cls: 'proto',
+                }),
+              ]),
+              el('td', { text: fmtHashrate(g.hashrate), cls: 'num' }),
+              el('td', { text: fmtDiff(g.bestDifficulty), cls: 'num' }),
+              el('td', { text: fmtDiff(g.targetDifficulty), cls: 'num' }),
+              el('td', { cls: 'num' }, [
+                document.createTextNode(g.sharesAccepted.toLocaleString()),
+                el('span', {
+                  text: g.sharesRejected ? ` / ${g.sharesRejected} rej` : '',
+                  cls: 'rej',
+                }),
+              ]),
+              el('td', {
+                text: g.averageShareTime
+                  ? `${g.averageShareTime.toFixed(1)}s`
+                  : '–',
+                cls: 'num',
+              }),
+              el('td', { text: fmtDuration(g.uptime || 0), cls: 'num' }),
+            ]),
+          )
+        $('miners').replaceChildren(...rows)
+        $('miners-empty').hidden = rows.length > 0
+      }
+
+      // ---------- chart ----------
+      const NS = 'http://www.w3.org/2000/svg'
+      function svgEl(tag, attrs) {
+        const e = document.createElementNS(NS, tag)
+        for (const k in attrs) e.setAttribute(k, attrs[k])
+        return e
+      }
+
+      // round the top of the y-axis up to a readable hashrate step
+      function niceMax(v) {
+        if (v <= 0) return 1
+        const p = Math.pow(10, Math.floor(Math.log10(v)))
+        for (const m of [1, 1.2, 1.5, 2, 2.5, 3, 4, 5, 6, 8, 10])
+          if (m * p >= v) return m * p
+        return 10 * p
+      }
+
+      let points = [] // [x, y, t, v] of the drawn series, for hover lookup
+
+      function drawChart() {
+        const svg = $('chart-svg')
+        const { width: W, height: H } = svg.getBoundingClientRect()
+        if (!W || !H) return
+        svg.setAttribute('viewBox', `0 0 ${W} ${H}`)
+        svg.replaceChildren()
+
+        const now = Date.now() / 1000
+        const start = now - range
+        const data = history.filter(([t]) => t >= start)
+        if (liveHashrate != null) data.push([now, liveHashrate])
+
+        const pad = { l: 64, r: 12, t: 10, b: 26 }
+        const iw = W - pad.l - pad.r
+        const ih = H - pad.t - pad.b
+        const max = niceMax(Math.max(0, ...data.map((d) => d[1])))
+        const x = (t) => pad.l + ((t - start) / range) * iw
+        const y = (v) => pad.t + ih - (v / max) * ih
+
+        // y grid + labels
+        for (let i = 0; i <= 4; i++) {
+          const v = (max / 4) * i
+          const yy = y(v)
+          svg.append(
+            svgEl('line', {
+              x1: pad.l,
+              x2: W - pad.r,
+              y1: yy,
+              y2: yy,
+              class: 'gridline',
+            }),
+          )
+          const label = svgEl('text', {
+            x: pad.l - 8,
+            y: yy + 4,
+            'text-anchor': 'end',
+            class: 'axis',
+          })
+          label.textContent = i === 0 ? '0' : fmtHashrate(v)
+          svg.append(label)
+        }
+        // x labels
+        const ticks = 6
+        for (let i = 0; i <= ticks; i++) {
+          const t = start + (range / ticks) * i
+          const d = new Date(t * 1000)
+          const label = svgEl('text', {
+            x: x(t),
+            y: H - 6,
+            'text-anchor': i === 0 ? 'start' : i === ticks ? 'end' : 'middle',
+            class: 'axis',
+          })
+          label.textContent =
+            range > 86400
+              ? d.toLocaleDateString(undefined, {
+                  weekday: 'short',
+                  day: 'numeric',
+                })
+              : d.toLocaleTimeString(undefined, {
+                  hour: '2-digit',
+                  minute: '2-digit',
+                })
+          svg.append(label)
+        }
+
+        points = data.map(([t, v]) => [x(t), y(v), t, v])
+        if (points.length === 0) {
+          const msg = svgEl('text', {
+            x: pad.l + iw / 2,
+            y: pad.t + ih / 2,
+            'text-anchor': 'middle',
+            class: 'axis',
+          })
+          msg.textContent = 'No hashrate recorded yet'
+          svg.append(msg)
+          return
+        }
+
+        // split into runs at gaps so downtime isn't drawn as a slope
+        const runs = [[points[0]]]
+        for (let i = 1; i < points.length; i++) {
+          if (points[i][2] - points[i - 1][2] > GAP) runs.push([])
+          runs[runs.length - 1].push(points[i])
+        }
+        const base = y(0)
+        for (const run of runs) {
+          const line = run
+            .map(
+              (p, i) => `${i ? 'L' : 'M'}${p[0].toFixed(1)},${p[1].toFixed(1)}`,
+            )
+            .join('')
+          if (run.length > 1) {
+            const area = `${line}L${run[run.length - 1][0].toFixed(1)},${base}L${run[0][0].toFixed(1)},${base}Z`
+            svg.append(svgEl('path', { d: area, class: 'area' }))
+            svg.append(svgEl('path', { d: line, class: 'line' }))
+          } else {
+            svg.append(
+              svgEl('circle', {
+                cx: run[0][0],
+                cy: run[0][1],
+                r: 3,
+                class: 'marker',
+              }),
+            )
+          }
+        }
+
+        svg.append(
+          svgEl('line', {
+            class: 'cross',
+            id: 'cross',
+            y1: pad.t,
+            y2: pad.t + ih,
+            visibility: 'hidden',
+          }),
+        )
+        svg.append(
+          svgEl('circle', {
+            class: 'marker',
+            id: 'hover-dot',
+            r: 4,
+            visibility: 'hidden',
+          }),
+        )
+      }
+
+      function onHover(ev) {
+        if (!points.length) return
+        const svg = $('chart-svg')
+        const rect = svg.getBoundingClientRect()
+        const mx = ev.clientX - rect.left
+        let best = points[0]
+        for (const p of points)
+          if (Math.abs(p[0] - mx) < Math.abs(best[0] - mx)) best = p
+        const [px, py, t, v] = best
+        const cross = $('cross')
+        const dot = $('hover-dot')
+        cross.setAttribute('x1', px)
+        cross.setAttribute('x2', px)
+        cross.setAttribute('visibility', 'visible')
+        dot.setAttribute('cx', px)
+        dot.setAttribute('cy', py)
+        dot.setAttribute('visibility', 'visible')
+        const tip = $('tooltip')
+        tip.replaceChildren(
+          el('b', { text: fmtHashrate(v) }),
+          el('div', { text: new Date(t * 1000).toLocaleString(), cls: 'sub' }),
+        )
+        tip.style.display = 'block'
+        tip.style.left = `${Math.min(Math.max(px, 70), rect.width - 70)}px`
+        tip.style.top = `${py - 10}px`
+      }
+      function onLeave() {
+        $('tooltip').style.display = 'none'
+        $('cross')?.setAttribute('visibility', 'hidden')
+        $('hover-dot')?.setAttribute('visibility', 'hidden')
+      }
+
+      $('chart').addEventListener('pointermove', onHover)
+      $('chart').addEventListener('pointerleave', onLeave)
+      new ResizeObserver(drawChart).observe($('chart'))
+
+      for (const b of document.querySelectorAll('.ranges button')) {
+        b.addEventListener('click', () => {
+          range = Number(b.dataset.range)
+          for (const o of document.querySelectorAll('.ranges button'))
+            o.setAttribute('aria-pressed', String(o === b))
+          drawChart()
+        })
+      }
+
+      refreshInfo().then(drawChart)
+      refreshHistory()
+      setInterval(() => refreshInfo().then(drawChart), INFO_INTERVAL)
+      setInterval(refreshHistory, HISTORY_INTERVAL)
+    </script>
+  </body>
+</html>
