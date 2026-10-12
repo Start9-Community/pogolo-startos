@@ -5,7 +5,7 @@ export const manifest = setupManifest({
   id: 'pogolo',
   title: 'pogolo',
   license: 'AGPL-3.0',
-  packageRepo: 'https://github.com/WantClue/pogolo-startos',
+  packageRepo: 'https://github.com/Start9-Community/pogolo-startos',
   upstreamRepo: 'https://github.com/0xf0xx0/pogolo',
   marketingUrl: 'https://github.com/0xf0xx0/pogolo',
   donationUrl: null,

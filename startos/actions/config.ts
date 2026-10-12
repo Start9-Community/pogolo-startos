@@ -14,6 +14,13 @@ export const inputSpec = InputSpec.of({
     required: false,
     default: null,
     placeholder: 'bc1q...',
+    patterns: [
+      {
+        regex:
+          '^((bc|tb|bcrt)1[02-9ac-hj-np-z]{8,87}|(BC|TB|BCRT)1[02-9AC-HJ-NP-Z]{8,87}|[123mn][1-9A-HJ-NP-Za-km-z]{25,34})$',
+        description: i18n('Must be a Bitcoin address'),
+      },
+    ],
   }),
   tag: Value.text({
     name: i18n('Coinbase Tag'),

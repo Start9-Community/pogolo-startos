@@ -6,7 +6,7 @@ const dict = {
   'Bitcoin is not yet reachable on the internal network. Ensure it is installed and running.': 1,
   'Stratum Server': 2,
   'Stratum server is ready': 3,
-  'Stratum server is not ready. pogolo waits for Bitcoin to finish syncing before accepting miners.': 4,
+  'Stratum server is not ready': 4,
 
   // interfaces.ts
   'Where your miners connect, using stratum+tcp:// or stratum2+tcp://': 5,
@@ -38,6 +38,9 @@ const dict = {
   'The web interface is not ready': 25,
   'Web UI': 26,
   'Pool dashboard with hashrate graph and connected miners': 27,
+
+  // actions/config.ts
+  'Must be a Bitcoin address': 28,
 } as const
 
 /**
