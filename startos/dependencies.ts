@@ -12,7 +12,7 @@ const bitcoind = sdk.Dependency.required('bitcoind', {
   versionRange:
     '(>=28.4:29 && <29) || (>=29.4:16 && <30) || (>=30.3:16 && <31) || >=31.1:16 || >=#knotsprerdts:29.3:29',
   kind: 'running',
-  healthChecks: ['bitcoind'],
+  healthChecks: ['bitcoind', 'sync-progress'],
 }).withInit(async (effects) => {
   await sdk.action.createTask(effects, 'bitcoind', autoconfig, 'critical', {
     input: {

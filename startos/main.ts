@@ -112,9 +112,7 @@ export const main = sdk.setupMain(async ({ effects }) => {
         fn: () =>
           sdk.healthCheck.checkPortListening(effects, stratumPort, {
             successMessage: i18n('Stratum server is ready'),
-            errorMessage: i18n(
-              'Stratum server is not ready. pogolo waits for Bitcoin to finish syncing before accepting miners.',
-            ),
+            errorMessage: i18n('Stratum server is not ready'),
           }),
       },
       requires: [],
