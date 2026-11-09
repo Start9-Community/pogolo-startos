@@ -135,7 +135,7 @@ Nothing else needs rebuilding — pogolo keeps no state of its own, and miners r
 ## Limitations and Differences
 
 1. Only the JSON-RPC + ZMQ backend is wired up; upstream's btcd websocket backend is not available.
-2. The `interface` and `host` listen settings are fixed: pogolo listens on all IPv4 addresses inside its container.
+2. The `host` listen setting is fixed to `::`: pogolo's Stratum and HTTP API listeners accept both IPv4 and IPv6 inside its container.
 3. The dashboard and hashrate history are this package's own, not upstream's. History covers only the time the service was running; gaps longer than three minutes are drawn as breaks.
 4. pogolo prints the Stratum V1 password in its log when one is set.
 5. pogolo generates a new Stratum V2 authority key on every start and never publishes it, so a V2 client that verifies the pool's authority key cannot connect: the handshake fails with `Invalid Certificate`. Start9's Stratum V2 package (SRI Translator) is one such client. This is upstream behavior.
