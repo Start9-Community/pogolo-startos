@@ -10,7 +10,7 @@ const backend = z.looseObject({
 })
 
 const pogolo = z.looseObject({
-  host: z.literal('0.0.0.0').catch('0.0.0.0'),
+  host: z.literal('::').catch('::'),
   port: z.literal(stratumPort).catch(stratumPort),
   http_port: z.literal(apiPort).catch(apiPort),
   tag: z.string().catch('/pogolo on StartOS - decentralize or die/'),
