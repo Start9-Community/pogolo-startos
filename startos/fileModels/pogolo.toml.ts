@@ -1,12 +1,19 @@
 import { FileHelper, z } from '@start9labs/start-sdk'
+import { rpcCookieName } from 'bitcoin-core-startos/startos/utils'
 import { sdk } from '../sdk'
-import { apiPort, bitcoindMountpoint, stratumPort } from '../utils'
+import {
+  apiPort,
+  bitcoindMountpoint,
+  maxJobInterval,
+  maxTargetShareInterval,
+  stratumPort,
+} from '../utils'
 
 const backend = z.looseObject({
   cookie: z
-    .literal(`${bitcoindMountpoint}/.cookie`)
-    .catch(`${bitcoindMountpoint}/.cookie`),
-  poll_interval: z.number().int().min(100).catch(500),
+    .literal(`${bitcoindMountpoint}/${rpcCookieName}`)
+    .catch(`${bitcoindMountpoint}/${rpcCookieName}`),
+  poll_interval: z.number().int().min(100).max(4_294_967_295).catch(500),
 })
 
 const pogolo = z.looseObject({
@@ -17,8 +24,20 @@ const pogolo = z.looseObject({
   pool_address: z.string().optional().catch(undefined),
   password: z.string().optional().catch(undefined),
   default_difficulty: z.number().min(0.16).catch(1024),
-  job_interval: z.number().int().min(1).catch(60),
-  target_share_interval: z.number().int().min(1).catch(5),
+  job_interval: z.number().int().min(1).max(maxJobInterval).catch(60),
+  target_share_interval: z
+    .number()
+    .int()
+    .min(1)
+    .max(maxTargetShareInterval)
+    .catch(5),
+  // hex-encoded SV2 authority keypair, generated once by init/authorityKey.ts.
+  // An invalid value is dropped (and regenerated) rather than stopping pogolo.
+  authority_keypair: z
+    .string()
+    .regex(/^(?:[0-9a-fA-F]{2})+$/)
+    .optional()
+    .catch(undefined),
 })
 
 const shape = z.looseObject({

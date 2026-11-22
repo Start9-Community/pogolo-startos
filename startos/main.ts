@@ -1,8 +1,11 @@
 import { FileHelper } from '@start9labs/start-sdk'
 import { manifest as bitcoinManifest } from 'bitcoin-core-startos/startos/manifest'
+import { rpcCookieName, rpcVolumeId } from 'bitcoin-core-startos/startos/utils'
 import { dependencies } from './dependencies'
+import { connectionJson } from './fileModels/connection.json'
 import { pogoloToml } from './fileModels/pogolo.toml'
 import { i18n } from './i18n'
+import { mainHostId, stratumInterfaceId } from './interfaces'
 import { sdk } from './sdk'
 import {
   bitcoindMountpoint,
@@ -27,7 +30,29 @@ export const main = sdk.setupMain(async ({ effects }) => {
     )
 
   // restart pogolo whenever the user changes its config
-  await pogoloToml.read().const(effects)
+  const conf = await pogoloToml.read().const(effects)
+
+  // the dashboard's "Connect your miners" card: the Stratum Server's LAN
+  // addresses (with the port StartOS assigned) and what miners must send.
+  // Kept current with onChange, so an address change doesn't restart pogolo.
+  const connectionInfo = sdk.host.getOwn(effects, mainHostId, (host) => ({
+    addresses:
+      host?.bindings[stratumPort]?.interfaces[
+        stratumInterfaceId
+      ]?.addressInfo?.nonLocal
+        .filter({ visibility: 'private' })
+        .format('hostname-info')
+        .flatMap(({ hostname, port }) =>
+          port === null ? [] : [{ host: hostname, port }],
+        ) ?? [],
+    passwordRequired: !!conf?.pogolo.password,
+    defaultPayoutAddress: conf?.pogolo.pool_address || null,
+  }))
+  await connectionJson.write(effects, await connectionInfo.once())
+  connectionInfo.onChange(async (info) => {
+    if (info) await connectionJson.write(effects, info)
+    return { cancel: false }
+  })
 
   const sub = await sdk.SubContainer.of(
     effects,
@@ -41,7 +66,7 @@ export const main = sdk.setupMain(async ({ effects }) => {
       })
       .mountDependency<typeof bitcoinManifest>({
         dependencyId: 'bitcoind',
-        volumeId: 'main',
+        volumeId: rpcVolumeId,
         subpath: null,
         mountpoint: bitcoindMountpoint,
         readonly: true,
@@ -50,7 +75,9 @@ export const main = sdk.setupMain(async ({ effects }) => {
   )
 
   // bitcoind rewrites its cookie on every restart; restart pogolo so it re-reads it
-  await FileHelper.string(`${await sub.rootfs}${bitcoindMountpoint}/.cookie`)
+  await FileHelper.string(
+    `${await sub.rootfs}${bitcoindMountpoint}/${rpcCookieName}`,
+  )
     .read()
     .const(effects)
 
